@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Caja" />
+<title>Control de caja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    --bg: #F5F6F2; --surface: #FFFFFF; --ink: #17231D; --ink-soft: #5B6B62; --line: #E2E5DD;
+    --cash: #2F6B4F; --cash-soft: #E7F0EA; --mp: #1E6FA8; --mp-soft: #E6F0F7;
+    --otro: #8A5A3B; --otro-soft: #F3E9E0; --accent: #4B3F72; --accent-soft: #ECE9F5; --danger: #B3261E;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    background: var(--bg); color: var(--ink);
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  #app { max-width: 460px; margin: 0 auto; padding-bottom: 100px; position: relative; }
+  .mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14px) 18px 8px; }
+  .header h1 { font-size: 15px; font-weight: 600; margin: 0; }
+  .header .sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--ink); }
+  .icon-row { display: flex; gap: 8px; }
+  .hero { padding: 6px 18px 18px; }
+  .hero .label { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 2px; }
+  .hero .amount { font-size: 42px; font-weight: 600; line-height: 1.1; letter-spacing: -0.5px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 0 18px; }
+  .card { background: var(--surface); border-radius: 14px; padding: 12px 10px; border: 1px solid var(--line); }
+  .card .ic { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+  .card .lbl { font-size: 11px; color: var(--ink-soft); line-height: 1.2; margin-bottom: 3px; min-height: 26px; }
+  .card .amt { font-size: 16px; font-weight: 600; }
+  .card .cnt { font-size: 10.5px; color: var(--ink-soft); margin-top: 2px; }
+  .section-title { font-size: 12.5px; color: var(--ink-soft); padding: 22px 18px 8px; }
+  .chart-wrap { padding: 0 18px; }
+  .empty { margin: 0 18px; padding: 18px; background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; color: var(--ink-soft); font-size: 13px; text-align: center; }
+  .list { padding: 0 18px; display: flex; flex-direction: column; gap: 8px; }
+  .row { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .row .left { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .row .method { font-size: 12.5px; font-weight: 600; }
+  .row .time { font-size: 11px; color: var(--ink-soft); }
+  .row .amt { font-size: 14.5px; font-weight: 600; }
+  .row .del { background: var(--danger); color: white; border: none; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-family: inherit; }
+  .fab-wrap { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 460px; padding: 14px 18px calc(env(safe-area-inset-bottom) + 16px); background: linear-gradient(to top, var(--bg) 60%, transparent); }
+  .fab { width: 100%; background: var(--ink); color: white; border: none; border-radius: 14px; padding: 15px; font-size: 14.5px; font-weight: 600; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .backdrop { position: fixed; inset: 0; background: rgba(23,35,29,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
+  .sheet { width: 100%; max-width: 460px; background: var(--bg); border-radius: 20px 20px 0 0; padding: 18px 18px calc(env(safe-area-inset-bottom) + 26px); max-height: 88vh; overflow-y: auto; }
+  .sheet-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .sheet-title h2 { font-size: 16px; margin: 0; font-weight: 600; }
+  .method-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .method-pill { flex: 1; padding: 10px 6px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+  .method-pill.active { border-color: currentColor; }
+  .amount-display { text-align: center; padding: 18px 0 10px; font-size: 38px; font-weight: 600; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+  .key { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 0; font-size: 19px; font-weight: 600; font-family: inherit; display: flex; align-items: center; justify-content: center; }
+  .confirm-btn { width: 100%; margin-top: 14px; background: var(--ink); color: white; border: none; border-radius: 14px; padding: 15px; font-size: 14.5px; font-weight: 600; font-family: inherit; }
+  .confirm-btn:disabled { opacity: 0.4; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .field input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-size: 15px; font-family: inherit; color: var(--ink); }
+  .close-breakdown { background: var(--surface); border-radius: 14px; border: 1px solid var(--line); padding: 4px 16px; margin-bottom: 14px; }
+  .close-line { display: flex; justify-content: space-between; padding: 11px 0; font-size: 13.5px; border-bottom: 1px solid var(--line); }
+  .close-line:last-child { border-bottom: none; }
+  .close-line .k { color: var(--ink-soft); }
+  .result-box { border-radius: 14px; padding: 18px; text-align: center; margin-bottom: 16px; }
+  .result-box .rl { font-size: 12.5px; margin-bottom: 4px; opacity: 0.85; }
+  .result-box .rv { font-size: 30px; font-weight: 600; }
+  .history-item { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .history-item .top { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  .history-item .total { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .history-item .row2 { display: flex; gap: 14px; font-size: 11.5px; color: var(--ink-soft); flex-wrap: wrap; }
+  .start-title { padding: calc(env(safe-area-inset-top) + 30px) 18px 6px; }
+  .start-title h1 { font-size: 24px; margin: 0 0 4px; }
+  .start-title p { font-size: 13px; color: var(--ink-soft); margin: 0; }
+  .start-body { padding: 20px 18px; }
+  .link-btn { background: none; border: none; color: var(--ink-soft); font-size: 12.5px; text-decoration: underline; font-family: inherit; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var ICONS = {
+    banknote: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>',
+    card: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
+    landmark: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22h18M6 18V9m4 9V9m4 9V9m4 9V9M2 9l10-6 10 6"/></svg>',
+    lock: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    history: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>',
+    plus: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+    x: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    trash: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>',
+    back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M18 9l-6 6M12 9l6 6"/></svg>'
+  };
+
+  var METHODS = {
+    efectivo: { label: "Efectivo", color: "var(--cash)", soft: "var(--cash-soft)", icon: "banknote" },
+    mp: { label: "Mercado Pago", color: "var(--mp)", soft: "var(--mp-soft)", icon: "card" },
+    otro: { label: "otro", color: "var(--otro)", soft: "var(--otro-soft)", icon: "landmark" }
+  };
+
+  function fmt(n){ return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n||0); }
+  function fmtTime(ts){ return new Date(ts).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }); }
+  function fmtDate(ts){ return new Date(ts).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" }) + " " + fmtTime(ts); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+  function load(key, fallback){
+    try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch(e){ return fallback; }
+  }
+  function save(key, val){ try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){} }
+
+  var state = {
+    shift: load("cc_currentShift", null),
+    settings: load("cc_settings", { otroLabel: "Nave", fondoDefault: 50000, targetDefault: 50000 }),
+    closedShifts: load("cc_closedShifts", []),
+    showAdd: false, showClose: false, showHistory: false,
+    method: "efectivo", buffer: "", confirmDeleteId: null,
+    startForm: null
+  };
+  state.settings.otroLabel = state.settings.otroLabel || "Nave";
+  state.startForm = {
+    fondo: String(state.settings.fondoDefault || 50000),
+    target: String(state.settings.targetDefault || 50000),
+    otroLabel: state.settings.otroLabel || "Nave"
+  };
+
+  function persistShift(){ if (state.shift) save("cc_currentShift", state.shift); else localStorage.removeItem("cc_currentShift"); }
+  function persistSettings(){ save("cc_settings", state.settings); }
+  function persistClosed(){ save("cc_closedShifts", state.closedShifts); }
+
+  function computeTotals(shift){
+    var t = { efectivo: 0, mp: 0, otro: 0 };
+    if (shift) shift.transactions.forEach(function(tr){ t[tr.method] += tr.amount; });
+    return { efectivo: t.efectivo, mp: t.mp, otro: t.otro, total: t.efectivo + t.mp + t.otro, count: shift ? shift.transactions.length : 0 };
+  }
+
+  function buildChart(shift){
+    if (!shift || shift.transactions.length < 2) return null;
+    var sorted = shift.transactions.slice().sort(function(a,b){ return a.ts - b.ts; });
+    var acc = 0;
+    var pts = sorted.map(function(t){ acc += t.amount; return { ts: t.ts, total: acc }; });
+    var w = 424, h = 150, padL = 44, padR = 10, padT = 10, padB = 22;
+    var minTs = pts[0].ts, maxTs = pts[pts.length-1].ts;
+    var maxTotal = pts[pts.length-1].total;
+    var xr = function(ts){ return maxTs === minTs ? padL : padL + (ts-minTs)/(maxTs-minTs) * (w-padL-padR); };
+    var yr = function(v){ return maxTotal === 0 ? h-padB : (h-padB) - (v/maxTotal) * (h-padT-padB); };
+    var linePts = pts.map(function(p){ return xr(p.ts).toFixed(1)+","+yr(p.total).toFixed(1); }).join(" ");
+    var dots = pts.map(function(p){ return '<circle cx="'+xr(p.ts).toFixed(1)+'" cy="'+yr(p.total).toFixed(1)+'" r="2.5" fill="var(--accent)"/>'; }).join("");
+    var gridY = [0,0.5,1].map(function(f){
+      var y = padT + f*(h-padT-padB);
+      var val = maxTotal * (1-f);
+      return '<line x1="'+padL+'" y1="'+y+'" x2="'+(w-padR)+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/>'+
+             '<text x="4" y="'+(y+3)+'" font-size="9" fill="var(--ink-soft)" font-family="IBM Plex Mono">'+Math.round(val/1000)+'k</text>';
+    }).join("");
+    return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'">'+
+      gridY +
+      '<polyline points="'+linePts+'" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'+
+      dots +
+      '<text x="'+padL+'" y="'+(h-6)+'" font-size="9" fill="var(--ink-soft)" font-family="IBM Plex Mono">'+fmtTime(minTs)+'</text>'+
+      '<text x="'+(w-padR)+'" y="'+(h-6)+'" font-size="9" fill="var(--ink-soft)" text-anchor="end" font-family="IBM Plex Mono">'+fmtTime(maxTs)+'</text>'+
+      '</svg>';
+  }
+
+  function render(){
+    var app = document.getElementById("app");
+    if (!state.shift){
+      app.innerHTML = renderStart();
+    } else {
+      app.innerHTML = renderMain();
+    }
+    var modals = "";
+    if (state.showAdd) modals += renderAddSheet();
+    if (state.showClose) modals += renderCloseSheet();
+    if (state.showHistory) modals += renderHistorySheet();
+    app.innerHTML += modals;
+    attachInputAutofocus();
+  }
+
+  function renderStart(){
+    var f = state.startForm;
+    var histLink = state.closedShifts.length ? '<div style="text-align:center;margin-top:16px"><button class="link-btn" data-action="open-history">Ver cierres anteriores</button></div>' : "";
+    return '' +
+      '<div class="start-title"><h1>Control de caja</h1><p>Configurá el inicio del turno</p></div>' +
+      '<div class="start-body">' +
+        '<div class="field"><label>Fondo inicial en efectivo</label><input inputmode="numeric" data-field="fondo" value="'+esc(f.fondo)+'"/></div>' +
+        '<div class="field"><label>Monto a dejar en caja al cerrar</label><input inputmode="numeric" data-field="target" value="'+esc(f.target)+'"/></div>' +
+        '<div class="field"><label>Nombre del otro posnet</label><input data-field="otroLabel" value="'+esc(f.otroLabel)+'"/></div>' +
+        '<button class="confirm-btn" data-action="start-shift">Iniciar turno</button>' +
+        histLink +
+      '</div>';
+  }
+
+  function renderMain(){
+    var totals = computeTotals(state.shift);
+    var otroL = state.settings.otroLabel || "Posnet Otro";
+    var cardsHtml = Object.keys(METHODS).map(function(key){
+      var m = METHODS[key];
+      var count = state.shift.transactions.filter(function(t){ return t.method === key; }).length;
+      var label = key === "otro" ? otroL : m.label;
+      return '<div class="card"><div class="ic" style="background:'+m.soft+';color:'+m.color+'">'+ICONS[m.icon]+'</div>' +
+        '<div class="lbl">'+esc(label)+'</div><div class="mono amt">'+fmt(totals[key])+'</div>' +
+        '<div class="cnt">'+count+' venta'+(count===1?"":"s")+'</div></div>';
+    }).join("");
+
+    var chart = buildChart(state.shift);
+    var chartHtml = chart ? '<div class="chart-wrap">'+chart+'</div>' : '<div class="empty">Registrá al menos dos ventas para ver la evolución.</div>';
+
+    var rows = state.shift.transactions.slice().sort(function(a,b){ return b.ts - a.ts; }).map(function(t){
+      var m = METHODS[t.method];
+      var label = t.method === "otro" ? otroL : m.label;
+      var right = state.confirmDeleteId === t.id
+        ? '<button class="del" data-action="delete-tx" data-id="'+t.id+'">Confirmar</button>'
+        : '<div style="display:flex;align-items:center;gap:10px">'+
+            '<div class="mono amt">'+fmt(t.amount)+'</div>'+
+            '<button class="icon-btn" style="width:30px;height:30px" data-action="ask-delete" data-id="'+t.id+'">'+ICONS.trash+'</button>'+
+          '</div>';
+      return '<div class="row"><div class="left"><div class="dot" style="background:'+m.soft+';color:'+m.color+'">'+ICONS[m.icon]+'</div>' +
+        '<div class="meta"><div class="method">'+esc(label)+'</div><div class="time">'+fmtTime(t.ts)+'</div></div></div>' + right + '</div>';
+    }).join("");
+    var listHtml = state.shift.transactions.length === 0 ? '<div class="empty">Todavía no registraste ventas.</div>' : rows;
+
+    return '' +
+      '<div class="header"><div><h1>Turno abierto</h1><div class="sub">Desde las '+fmtTime(state.shift.startedAt)+'</div></div>' +
+      '<div class="icon-row"><button class="icon-btn" data-action="open-history">'+ICONS.history+'</button>' +
+      '<button class="icon-btn" data-action="open-close">'+ICONS.lock+'</button></div></div>' +
+      '<div class="hero"><div class="label">Total vendido en este turno</div><div class="mono amount">'+fmt(totals.total)+'</div></div>' +
+      '<div class="cards">'+cardsHtml+'</div>' +
+      '<div class="section-title">Evolución del turno</div>' + chartHtml +
+      '<div class="section-title">Ventas del turno</div><div class="list">'+listHtml+'</div>' +
+      '<div class="fab-wrap"><button class="fab" data-action="open-add">'+ICONS.plus+' Registrar venta</button></div>';
+  }
+
+  function renderAddSheet(){
+    var otroL = state.settings.otroLabel || "Posnet Otro";
+    var pills = Object.keys(METHODS).map(function(key){
+      var m = METHODS[key];
+      var active = state.method === key;
+      var label = key === "otro" ? otroL : m.label;
+      var style = active ? ' style="color:'+m.color+';background:'+m.soft+'"' : "";
+      return '<div class="method-pill'+(active?' active':'')+'"'+style+' data-action="select-method" data-key="'+key+'">'+ICONS[m.icon]+'<span>'+esc(label)+'</span></div>';
+    }).join("");
+    var amountVal = parseInt(state.buffer||"0",10);
+    var disabled = (!state.buffer || amountVal<=0) ? "disabled" : "";
+    return '<div class="backdrop" data-action="close-add">' +
+      '<div class="sheet" data-stop="1">' +
+      '<div class="sheet-title"><h2>Nueva venta</h2><button class="icon-btn" data-action="close-add">'+ICONS.x+'</button></div>' +
+      '<div class="method-row">'+pills+'</div>' +
+      '<div class="mono amount-display">'+fmt(amountVal)+'</div>' +
+      '<div class="keypad">' +
+        ["1","2","3","4","5","6","7","8","9","clear","0","back"].map(function(k){
+          var content = k==="back" ? ICONS.back : (k==="clear" ? "C" : k);
+          return '<button class="key" data-action="keypad" data-key="'+k+'">'+content+'</button>';
+        }).join("") +
+      '</div>' +
+      '<button class="confirm-btn" '+disabled+' data-action="add-tx">Agregar '+(state.buffer?fmt(amountVal):"")+'</button>' +
+      '</div></div>';
+  }
+
+  function renderCloseSheet(){
+    var totals = computeTotals(state.shift);
+    var otroL = state.settings.otroLabel || "Posnet Otro";
+    var cashInRegister = state.shift.fondoInicial + totals.efectivo;
+    var diff = cashInRegister - state.shift.targetCash;
+    var boxStyle = diff > 0 ? "background:var(--cash-soft);color:var(--cash)" : diff < 0 ? "background:#FBEAE8;color:var(--danger)" : "background:var(--accent-soft);color:var(--accent)";
+    var boxLabel = diff > 0 ? "Retirar para dejar "+fmt(state.shift.targetCash)+" en caja" : diff < 0 ? "Falta reponer para llegar a "+fmt(state.shift.targetCash) : "La caja ya queda en el monto objetivo";
+    return '<div class="backdrop" data-action="close-close">' +
+      '<div class="sheet" data-stop="1">' +
+      '<div class="sheet-title"><h2>Cerrar caja</h2><button class="icon-btn" data-action="close-close">'+ICONS.x+'</button></div>' +
+      '<div class="close-breakdown">' +
+        '<div class="close-line"><span class="k">Efectivo vendido</span><span class="mono">'+fmt(totals.efectivo)+'</span></div>' +
+        '<div class="close-line"><span class="k">Mercado Pago</span><span class="mono">'+fmt(totals.mp)+'</span></div>' +
+        '<div class="close-line"><span class="k">'+esc(otroL)+'</span><span class="mono">'+fmt(totals.otro)+'</span></div>' +
+        '<div class="close-line" style="font-weight:600"><span class="k">Total general</span><span class="mono">'+fmt(totals.total)+'</span></div>' +
+        '<div class="close-line"><span class="k">Fondo inicial</span><span class="mono">'+fmt(state.shift.fondoInicial)+'</span></div>' +
+        '<div class="close-line"><span class="k">Efectivo esperado en caja</span><span class="mono">'+fmt(cashInRegister)+'</span></div>' +
+      '</div>' +
+      '<div class="result-box" style="'+boxStyle+'"><div class="rl">'+boxLabel+'</div><div class="mono rv">'+fmt(Math.abs(diff))+'</div></div>' +
+      '<button class="confirm-btn" data-action="confirm-close">Confirmar cierre</button>' +
+      '</div></div>';
+  }
+
+  function renderHistorySheet(){
+    var items = state.closedShifts.length === 0 ? '<div class="empty">Todavía no hay turnos cerrados.</div>' :
+      state.closedShifts.map(function(c){
+        return '<div class="history-item">' +
+          '<div class="top">'+fmtDate(c.startedAt)+' — '+fmtDate(c.closedAt)+'</div>' +
+          '<div class="mono total">'+fmt(c.totals.total)+'</div>' +
+          '<div class="row2"><span>Efectivo '+fmt(c.totals.efectivo)+'</span><span>MP '+fmt(c.totals.mp)+'</span><span>Otro '+fmt(c.totals.otro)+'</span></div>' +
+          '<div class="row2" style="margin-top:6px"><span>'+(c.diff>=0?"Retirado":"Repuesto")+': '+fmt(Math.abs(c.diff))+'</span></div>' +
+          '</div>';
+      }).join("");
+    return '<div class="backdrop" data-action="close-history">' +
+      '<div class="sheet" data-stop="1">' +
+      '<div class="sheet-title"><h2>Cierres anteriores</h2><button class="icon-btn" data-action="close-history">'+ICONS.x+'</button></div>' +
+      items +
+      '</div></div>';
+  }
+
+  function attachInputAutofocus(){
+    // no-op placeholder (kept for potential future focus management)
+  }
+
+  // Event delegation
+  document.addEventListener("click", function(e){
+    var btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    if (btn.classList.contains("backdrop") && e.target !== btn) return; // click landed inside the sheet, not the overlay
+    var action = btn.dataset.action;
+    var id = btn.dataset.id;
+    var key = btn.dataset.key;
+
+    if (action === "close-add") { state.showAdd = false; render(); return; }
+    if (action === "close-close") { state.showClose = false; render(); return; }
+    if (action === "close-history") { state.showHistory = false; render(); return; }
+
+    if (action === "start-shift") {
+      var fondo = parseInt(state.startForm.fondo||"0",10)||0;
+      var target = parseInt(state.startForm.target||"0",10)||0;
+      var otroLabel = (state.startForm.otroLabel||"").trim() || "Nave";
+      state.settings = { otroLabel: otroLabel, fondoDefault: fondo, targetDefault: target };
+      state.shift = { id: Date.now().toString(), startedAt: Date.now(), fondoInicial: fondo, targetCash: target, transactions: [] };
+      persistSettings(); persistShift(); render();
+    } else if (action === "open-add") { state.showAdd = true; state.buffer = ""; render(); }
+    else if (action === "select-method") { state.method = key; render(); }
+    else if (action === "keypad") {
+      if (key === "back") state.buffer = state.buffer.slice(0,-1);
+      else if (key === "clear") state.buffer = "";
+      else if (state.buffer.length < 9) state.buffer += key;
+      render();
+    }
+    else if (action === "add-tx") {
+      var amount = parseInt(state.buffer,10);
+      if (!amount || amount<=0) return;
+      state.shift.transactions.push({ id: Date.now().toString()+Math.random().toString(36).slice(2,7), amount: amount, method: state.method, ts: Date.now() });
+      state.buffer = ""; state.showAdd = false;
+      persistShift(); render();
+    }
+    else if (action === "open-close") { state.showClose = true; render(); }
+    else if (action === "confirm-close") {
+      var totals = computeTotals(state.shift);
+      var cashInRegister = state.shift.fondoInicial + totals.efectivo;
+      var diff = cashInRegister - state.shift.targetCash;
+      state.closedShifts.unshift({ id: state.shift.id, startedAt: state.shift.startedAt, closedAt: Date.now(), fondoInicial: state.shift.fondoInicial, targetCash: state.shift.targetCash, totals: totals, cashInRegister: cashInRegister, diff: diff });
+      state.closedShifts = state.closedShifts.slice(0,30);
+      state.startForm = { fondo: String(state.shift.fondoInicial), target: String(state.shift.targetCash), otroLabel: state.settings.otroLabel };
+      state.shift = null; state.showClose = false;
+      persistClosed(); persistShift(); render();
+    }
+    else if (action === "open-history") { state.showHistory = true; render(); }
+    else if (action === "ask-delete") { state.confirmDeleteId = id; render(); }
+    else if (action === "delete-tx") {
+      state.shift.transactions = state.shift.transactions.filter(function(t){ return t.id !== id; });
+      state.confirmDeleteId = null;
+      persistShift(); render();
+    }
+  });
+
+  document.addEventListener("input", function(e){
+    var field = e.target.dataset && e.target.dataset.field;
+    if (!field) return;
+    if (field === "fondo" || field === "target") {
+      state.startForm[field] = e.target.value.replace(/[^0-9]/g, "");
+      if (e.target.value !== state.startForm[field]) e.target.value = state.startForm[field];
+    } else if (field === "otroLabel") {
+      state.startForm.otroLabel = e.target.value;
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
