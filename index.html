@@ -49,7 +49,11 @@
   .row .amt { font-size: 14.5px; font-weight: 600; }
   .row .del { background: var(--danger); color: white; border: none; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-family: inherit; }
   .fab-wrap { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 460px; padding: 14px 18px calc(env(safe-area-inset-bottom) + 16px); background: linear-gradient(to top, var(--bg) 60%, transparent); }
+  .fab-secondary-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .fab-secondary { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 0; font-size: 12.5px; font-weight: 600; font-family: inherit; color: var(--ink); display: flex; align-items: center; justify-content: center; gap: 6px; }
   .fab { width: 100%; background: var(--ink); color: white; border: none; border-radius: 14px; padding: 15px; font-size: 14.5px; font-weight: 600; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .egresos-bar { margin: 10px 18px 0; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; color: var(--ink-soft); display: flex; gap: 16px; }
+  .egresos-bar b { color: var(--danger); }
   .backdrop { position: fixed; inset: 0; background: rgba(23,35,29,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
   .sheet { width: 100%; max-width: 460px; background: var(--bg); border-radius: 20px 20px 0 0; padding: 18px 18px calc(env(safe-area-inset-bottom) + 26px); max-height: 88vh; overflow-y: auto; }
   .sheet-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
@@ -113,7 +117,9 @@
     trash: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>',
     back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M18 9l-6 6M12 9l6 6"/></svg>',
     download: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
-    upload: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>'
+    upload: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>',
+    coffee: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8Z"/><path d="M6 1v3M10 1v3M14 1v3"/></svg>',
+    users: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
   };
 
   var METHODS = {
@@ -138,6 +144,7 @@
     closedShifts: load("cc_closedShifts", []),
     showAdd: false, showClose: false, showHistory: false,
     method: "efectivo", buffer: "", confirmDeleteId: null,
+    expenseType: null, note: "",
     startForm: null
   };
   state.settings.otroLabel = state.settings.otroLabel || "Nave";
@@ -153,13 +160,23 @@
 
   function computeTotals(shift){
     var t = { efectivo: 0, mp: 0, otro: 0 };
-    if (shift) shift.transactions.forEach(function(tr){ t[tr.method] += tr.amount; });
-    return { efectivo: t.efectivo, mp: t.mp, otro: t.otro, total: t.efectivo + t.mp + t.otro, count: shift ? shift.transactions.length : 0 };
+    var gastos = 0, jornales = 0, ventasCount = 0;
+    if (shift) shift.transactions.forEach(function(tr){
+      var type = tr.type || "venta";
+      if (type === "egreso") {
+        if (tr.category === "jornal") jornales += tr.amount; else gastos += tr.amount;
+      } else {
+        t[tr.method] += tr.amount; ventasCount++;
+      }
+    });
+    return { efectivo: t.efectivo, mp: t.mp, otro: t.otro, total: t.efectivo + t.mp + t.otro, count: ventasCount, gastos: gastos, jornales: jornales, egresosTotal: gastos + jornales };
   }
 
   function buildChart(shift){
-    if (!shift || shift.transactions.length < 2) return null;
-    var sorted = shift.transactions.slice().sort(function(a,b){ return a.ts - b.ts; });
+    if (!shift) return null;
+    var ventas = shift.transactions.filter(function(t){ return (t.type || "venta") === "venta"; });
+    if (ventas.length < 2) return null;
+    var sorted = ventas.slice().sort(function(a,b){ return a.ts - b.ts; });
     var acc = 0;
     var pts = sorted.map(function(t){ acc += t.amount; return { ts: t.ts, total: acc }; });
     var w = 424, h = 150, padL = 44, padR = 10, padT = 10, padB = 22;
@@ -215,32 +232,49 @@
 
   function renderMain(){
     var totals = computeTotals(state.shift);
-    var otroL = state.settings.otroLabel || "Posnet Otro";
+    var otroL = state.settings.otroLabel || "Nave";
     var cardsHtml = Object.keys(METHODS).map(function(key){
       var m = METHODS[key];
-      var count = state.shift.transactions.filter(function(t){ return t.method === key; }).length;
+      var count = state.shift.transactions.filter(function(t){ return (t.type||"venta")==="venta" && t.method === key; }).length;
       var label = key === "otro" ? otroL : m.label;
       return '<div class="card"><div class="ic" style="background:'+m.soft+';color:'+m.color+'">'+ICONS[m.icon]+'</div>' +
         '<div class="lbl">'+esc(label)+'</div><div class="mono amt">'+fmt(totals[key])+'</div>' +
         '<div class="cnt">'+count+' venta'+(count===1?"":"s")+'</div></div>';
     }).join("");
 
+    var egresosBar = (totals.gastos > 0 || totals.jornales > 0)
+      ? '<div class="egresos-bar"><span>Gastos: <b class="mono">'+fmt(totals.gastos)+'</b></span><span>Jornales: <b class="mono">'+fmt(totals.jornales)+'</b></span></div>'
+      : "";
+
     var chart = buildChart(state.shift);
     var chartHtml = chart ? '<div class="chart-wrap">'+chart+'</div>' : '<div class="empty">Registrá al menos dos ventas para ver la evolución.</div>';
 
     var rows = state.shift.transactions.slice().sort(function(a,b){ return b.ts - a.ts; }).map(function(t){
-      var m = METHODS[t.method];
-      var label = t.method === "otro" ? otroL : m.label;
+      var isEgreso = (t.type||"venta") === "egreso";
+      var icon, dotStyle, label, amtHtml;
+      if (isEgreso) {
+        var cat = t.category === "jornal" ? "Jornal" : "Gasto";
+        label = cat + (t.note ? ": " + t.note : "");
+        icon = t.category === "jornal" ? ICONS.users : ICONS.coffee;
+        dotStyle = "background:#FBEAE8;color:var(--danger)";
+        amtHtml = '<div class="mono amt" style="color:var(--danger)">-'+fmt(t.amount)+'</div>';
+      } else {
+        var m = METHODS[t.method];
+        label = t.method === "otro" ? otroL : m.label;
+        icon = ICONS[m.icon];
+        dotStyle = "background:"+m.soft+";color:"+m.color;
+        amtHtml = '<div class="mono amt">'+fmt(t.amount)+'</div>';
+      }
       var right = state.confirmDeleteId === t.id
         ? '<button class="del" data-action="delete-tx" data-id="'+t.id+'">Confirmar</button>'
         : '<div style="display:flex;align-items:center;gap:10px">'+
-            '<div class="mono amt">'+fmt(t.amount)+'</div>'+
+            amtHtml +
             '<button class="icon-btn" style="width:30px;height:30px" data-action="ask-delete" data-id="'+t.id+'">'+ICONS.trash+'</button>'+
           '</div>';
-      return '<div class="row"><div class="left"><div class="dot" style="background:'+m.soft+';color:'+m.color+'">'+ICONS[m.icon]+'</div>' +
+      return '<div class="row"><div class="left"><div class="dot" style="'+dotStyle+'">'+icon+'</div>' +
         '<div class="meta"><div class="method">'+esc(label)+'</div><div class="time">'+fmtTime(t.ts)+'</div></div></div>' + right + '</div>';
     }).join("");
-    var listHtml = state.shift.transactions.length === 0 ? '<div class="empty">Todavía no registraste ventas.</div>' : rows;
+    var listHtml = state.shift.transactions.length === 0 ? '<div class="empty">Todavía no registraste movimientos.</div>' : rows;
 
     return '' +
       '<div class="header"><div><h1>Turno abierto</h1><div class="sub">Desde las '+fmtTime(state.shift.startedAt)+'</div></div>' +
@@ -248,13 +282,43 @@
       '<button class="icon-btn" data-action="open-close">'+ICONS.lock+'</button></div></div>' +
       '<div class="hero"><div class="label">Total vendido en este turno</div><div class="mono amount">'+fmt(totals.total)+'</div></div>' +
       '<div class="cards">'+cardsHtml+'</div>' +
+      egresosBar +
       '<div class="section-title">Evolución del turno</div>' + chartHtml +
-      '<div class="section-title">Ventas del turno</div><div class="list">'+listHtml+'</div>' +
-      '<div class="fab-wrap"><button class="fab" data-action="open-add">'+ICONS.plus+' Registrar venta</button></div>';
+      '<div class="section-title">Movimientos del turno</div><div class="list">'+listHtml+'</div>' +
+      '<div class="fab-wrap">' +
+        '<div class="fab-secondary-row">' +
+          '<button class="fab-secondary" data-action="open-expense" data-key="gasto">'+ICONS.coffee+' Gasto</button>' +
+          '<button class="fab-secondary" data-action="open-expense" data-key="jornal">'+ICONS.users+' Jornales</button>' +
+        '</div>' +
+        '<button class="fab" data-action="open-add">'+ICONS.plus+' Registrar venta</button>' +
+      '</div>';
   }
 
   function renderAddSheet(){
-    var otroL = state.settings.otroLabel || "Posnet Otro";
+    var isExpense = !!state.expenseType;
+    var otroL = state.settings.otroLabel || "Nave";
+    var amountVal = parseInt(state.buffer||"0",10);
+    var disabled = (!state.buffer || amountVal<=0) ? "disabled" : "";
+
+    if (isExpense) {
+      var title = state.expenseType === "jornal" ? "Registrar pago de jornal" : "Registrar gasto";
+      var notePlaceholder = state.expenseType === "jornal" ? "Detalle (opcional), ej: Juan" : "Detalle (opcional), ej: café";
+      var confirmLabel = (state.expenseType === "jornal" ? "Registrar jornal " : "Registrar gasto ") + (state.buffer?fmt(amountVal):"");
+      return '<div class="backdrop" data-action="close-add">' +
+        '<div class="sheet" data-stop="1">' +
+        '<div class="sheet-title"><h2>'+title+'</h2><button class="icon-btn" data-action="close-add">'+ICONS.x+'</button></div>' +
+        '<div class="mono amount-display" style="color:var(--danger)">-'+fmt(amountVal)+'</div>' +
+        '<div class="keypad">' +
+          ["1","2","3","4","5","6","7","8","9","clear","0","back"].map(function(k){
+            var content = k==="back" ? ICONS.back : (k==="clear" ? "C" : k);
+            return '<button class="key" data-action="keypad" data-key="'+k+'">'+content+'</button>';
+          }).join("") +
+        '</div>' +
+        '<div class="field" style="margin-top:14px"><input data-field="expenseNote" placeholder="'+esc(notePlaceholder)+'" value="'+esc(state.note)+'"/></div>' +
+        '<button class="confirm-btn" '+disabled+' data-action="add-expense">'+confirmLabel+'</button>' +
+        '</div></div>';
+    }
+
     var pills = Object.keys(METHODS).map(function(key){
       var m = METHODS[key];
       var active = state.method === key;
@@ -262,8 +326,6 @@
       var style = active ? ' style="color:'+m.color+';background:'+m.soft+'"' : "";
       return '<div class="method-pill'+(active?' active':'')+'"'+style+' data-action="select-method" data-key="'+key+'">'+ICONS[m.icon]+'<span>'+esc(label)+'</span></div>';
     }).join("");
-    var amountVal = parseInt(state.buffer||"0",10);
-    var disabled = (!state.buffer || amountVal<=0) ? "disabled" : "";
     return '<div class="backdrop" data-action="close-add">' +
       '<div class="sheet" data-stop="1">' +
       '<div class="sheet-title"><h2>Nueva venta</h2><button class="icon-btn" data-action="close-add">'+ICONS.x+'</button></div>' +
@@ -281,11 +343,13 @@
 
   function renderCloseSheet(){
     var totals = computeTotals(state.shift);
-    var otroL = state.settings.otroLabel || "Posnet Otro";
-    var cashInRegister = state.shift.fondoInicial + totals.efectivo;
+    var otroL = state.settings.otroLabel || "Nave";
+    var cashInRegister = state.shift.fondoInicial + totals.efectivo - totals.gastos - totals.jornales;
     var diff = cashInRegister - state.shift.targetCash;
     var boxStyle = diff > 0 ? "background:var(--cash-soft);color:var(--cash)" : diff < 0 ? "background:#FBEAE8;color:var(--danger)" : "background:var(--accent-soft);color:var(--accent)";
     var boxLabel = diff > 0 ? "Retirar para dejar "+fmt(state.shift.targetCash)+" en caja" : diff < 0 ? "Falta reponer para llegar a "+fmt(state.shift.targetCash) : "La caja ya queda en el monto objetivo";
+    var gastosLine = totals.gastos > 0 ? '<div class="close-line"><span class="k">Gastos</span><span class="mono">-'+fmt(totals.gastos)+'</span></div>' : "";
+    var jornalesLine = totals.jornales > 0 ? '<div class="close-line"><span class="k">Jornales</span><span class="mono">-'+fmt(totals.jornales)+'</span></div>' : "";
     return '<div class="backdrop" data-action="close-close">' +
       '<div class="sheet" data-stop="1">' +
       '<div class="sheet-title"><h2>Cerrar caja</h2><button class="icon-btn" data-action="close-close">'+ICONS.x+'</button></div>' +
@@ -293,7 +357,8 @@
         '<div class="close-line"><span class="k">Efectivo vendido</span><span class="mono">'+fmt(totals.efectivo)+'</span></div>' +
         '<div class="close-line"><span class="k">Mercado Pago</span><span class="mono">'+fmt(totals.mp)+'</span></div>' +
         '<div class="close-line"><span class="k">'+esc(otroL)+'</span><span class="mono">'+fmt(totals.otro)+'</span></div>' +
-        '<div class="close-line" style="font-weight:600"><span class="k">Total general</span><span class="mono">'+fmt(totals.total)+'</span></div>' +
+        '<div class="close-line" style="font-weight:600"><span class="k">Total vendido</span><span class="mono">'+fmt(totals.total)+'</span></div>' +
+        gastosLine + jornalesLine +
         '<div class="close-line"><span class="k">Fondo inicial</span><span class="mono">'+fmt(state.shift.fondoInicial)+'</span></div>' +
         '<div class="close-line"><span class="k">Efectivo esperado en caja</span><span class="mono">'+fmt(cashInRegister)+'</span></div>' +
       '</div>' +
@@ -305,10 +370,15 @@
   function renderHistorySheet(){
     var items = state.closedShifts.length === 0 ? '<div class="empty">Todavía no hay turnos cerrados.</div>' :
       state.closedShifts.map(function(c){
+        var t = c.totals || {};
+        var egresosLine = (t.gastos > 0 || t.jornales > 0)
+          ? '<div class="row2" style="margin-top:4px"><span>Gastos '+fmt(t.gastos||0)+'</span><span>Jornales '+fmt(t.jornales||0)+'</span></div>'
+          : "";
         return '<div class="history-item">' +
           '<div class="top">'+fmtDate(c.startedAt)+' — '+fmtDate(c.closedAt)+'</div>' +
-          '<div class="mono total">'+fmt(c.totals.total)+'</div>' +
-          '<div class="row2"><span>Efectivo '+fmt(c.totals.efectivo)+'</span><span>MP '+fmt(c.totals.mp)+'</span><span>Otro '+fmt(c.totals.otro)+'</span></div>' +
+          '<div class="mono total">'+fmt(t.total)+'</div>' +
+          '<div class="row2"><span>Efectivo '+fmt(t.efectivo)+'</span><span>MP '+fmt(t.mp)+'</span><span>Otro '+fmt(t.otro)+'</span></div>' +
+          egresosLine +
           '<div class="row2" style="margin-top:6px"><span>'+(c.diff>=0?"Retirado":"Repuesto")+': '+fmt(Math.abs(c.diff))+'</span></div>' +
           '</div>';
       }).join("");
@@ -381,7 +451,7 @@
     var id = btn.dataset.id;
     var key = btn.dataset.key;
 
-    if (action === "close-add") { state.showAdd = false; render(); return; }
+    if (action === "close-add") { state.showAdd = false; state.expenseType = null; render(); return; }
     if (action === "close-close") { state.showClose = false; render(); return; }
     if (action === "close-history") { state.showHistory = false; render(); return; }
 
@@ -392,7 +462,8 @@
       state.settings = { otroLabel: otroLabel, fondoDefault: fondo, targetDefault: target };
       state.shift = { id: Date.now().toString(), startedAt: Date.now(), fondoInicial: fondo, targetCash: target, transactions: [] };
       persistSettings(); persistShift(); render();
-    } else if (action === "open-add") { state.showAdd = true; state.buffer = ""; render(); }
+    } else if (action === "open-add") { state.showAdd = true; state.expenseType = null; state.buffer = ""; render(); }
+    else if (action === "open-expense") { state.showAdd = true; state.expenseType = key; state.buffer = ""; state.note = ""; render(); }
     else if (action === "select-method") { state.method = key; render(); }
     else if (action === "keypad") {
       if (key === "back") state.buffer = state.buffer.slice(0,-1);
@@ -403,14 +474,21 @@
     else if (action === "add-tx") {
       var amount = parseInt(state.buffer,10);
       if (!amount || amount<=0) return;
-      state.shift.transactions.push({ id: Date.now().toString()+Math.random().toString(36).slice(2,7), amount: amount, method: state.method, ts: Date.now() });
+      state.shift.transactions.push({ id: Date.now().toString()+Math.random().toString(36).slice(2,7), amount: amount, method: state.method, type: "venta", ts: Date.now() });
       state.buffer = ""; state.showAdd = false;
+      persistShift(); render();
+    }
+    else if (action === "add-expense") {
+      var amountE = parseInt(state.buffer,10);
+      if (!amountE || amountE<=0) return;
+      state.shift.transactions.push({ id: Date.now().toString()+Math.random().toString(36).slice(2,7), amount: amountE, method: "efectivo", type: "egreso", category: state.expenseType, note: (state.note||"").trim(), ts: Date.now() });
+      state.buffer = ""; state.note = ""; state.showAdd = false; state.expenseType = null;
       persistShift(); render();
     }
     else if (action === "open-close") { state.showClose = true; render(); }
     else if (action === "confirm-close") {
       var totals = computeTotals(state.shift);
-      var cashInRegister = state.shift.fondoInicial + totals.efectivo;
+      var cashInRegister = state.shift.fondoInicial + totals.efectivo - totals.gastos - totals.jornales;
       var diff = cashInRegister - state.shift.targetCash;
       state.closedShifts.unshift({ id: state.shift.id, startedAt: state.shift.startedAt, closedAt: Date.now(), fondoInicial: state.shift.fondoInicial, targetCash: state.shift.targetCash, totals: totals, cashInRegister: cashInRegister, diff: diff });
       state.closedShifts = state.closedShifts.slice(0,30);
@@ -437,6 +515,8 @@
       if (e.target.value !== state.startForm[field]) e.target.value = state.startForm[field];
     } else if (field === "otroLabel") {
       state.startForm.otroLabel = e.target.value;
+    } else if (field === "expenseNote") {
+      state.note = e.target.value;
     }
   });
 
