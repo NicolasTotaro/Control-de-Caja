@@ -98,14 +98,6 @@
 (function(){
   "use strict";
 
-  // Evita el zoom por doble-tap en iOS Safari (persiste incluso con user-scalable=no en algunos casos)
-  var lastTouchEnd = 0;
-  document.addEventListener("touchend", function(e){
-    var now = Date.now();
-    if (now - lastTouchEnd <= 350) e.preventDefault();
-    lastTouchEnd = now;
-  }, { passive: false });
-
   var ICONS = {
     banknote: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>',
     card: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
@@ -144,6 +136,7 @@
     closedShifts: load("cc_closedShifts", []),
     showAdd: false, showClose: false, showHistory: false,
     method: "efectivo", buffer: "", confirmDeleteId: null,
+    confirmDeleteShiftId: null,
     expenseType: null, note: "",
     startForm: null
   };
@@ -374,8 +367,13 @@
         var egresosLine = (t.gastos > 0 || t.jornales > 0)
           ? '<div class="row2" style="margin-top:4px"><span>Gastos '+fmt(t.gastos||0)+'</span><span>Jornales '+fmt(t.jornales||0)+'</span></div>'
           : "";
+        var deleteBtn = state.confirmDeleteShiftId === c.id
+          ? '<button class="del" data-action="delete-shift" data-id="'+c.id+'">Confirmar borrado</button>'
+          : '<button class="icon-btn" style="width:30px;height:30px" data-action="ask-delete-shift" data-id="'+c.id+'">'+ICONS.trash+'</button>';
         return '<div class="history-item">' +
-          '<div class="top">'+fmtDate(c.startedAt)+' — '+fmtDate(c.closedAt)+'</div>' +
+          '<div class="top" style="display:flex;justify-content:space-between;align-items:center">' +
+            '<span>'+fmtDate(c.startedAt)+' — '+fmtDate(c.closedAt)+'</span>' + deleteBtn +
+          '</div>' +
           '<div class="mono total">'+fmt(t.total)+'</div>' +
           '<div class="row2"><span>Efectivo '+fmt(t.efectivo)+'</span><span>MP '+fmt(t.mp)+'</span><span>Otro '+fmt(t.otro)+'</span></div>' +
           egresosLine +
@@ -453,7 +451,7 @@
 
     if (action === "close-add") { state.showAdd = false; state.expenseType = null; render(); return; }
     if (action === "close-close") { state.showClose = false; render(); return; }
-    if (action === "close-history") { state.showHistory = false; render(); return; }
+    if (action === "close-history") { state.showHistory = false; state.confirmDeleteShiftId = null; render(); return; }
 
     if (action === "start-shift") {
       var fondo = parseInt(state.startForm.fondo||"0",10)||0;
@@ -500,6 +498,12 @@
     else if (action === "export-backup") { exportBackup(); }
     else if (action === "import-backup") { document.getElementById("importFile").click(); }
     else if (action === "ask-delete") { state.confirmDeleteId = id; render(); }
+    else if (action === "ask-delete-shift") { state.confirmDeleteShiftId = id; render(); }
+    else if (action === "delete-shift") {
+      state.closedShifts = state.closedShifts.filter(function(c){ return c.id !== id; });
+      state.confirmDeleteShiftId = null;
+      persistClosed(); render();
+    }
     else if (action === "delete-tx") {
       state.shift.transactions = state.shift.transactions.filter(function(t){ return t.id !== id; });
       state.confirmDeleteId = null;
